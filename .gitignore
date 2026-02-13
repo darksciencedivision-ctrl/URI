@@ -1,0 +1,43 @@
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*.pyd
+*.so
+*.egg-info/
+dist/
+build/
+pip-wheel-metadata/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments (DO NOT COMMIT)
+.venv/
+venv/
+env/
+
+# Local runtime state (DO NOT COMMIT)
+data/
+logs/
+rrr_queue/
+rrr_responses/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Temp
+*.log
+*.tmp
+*.bak
+*.swp
+
+# Secrets / local config (recommend)
+uri_config.json
+*.env
+.env.*
+

@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>URI — Unshackled Research Interface</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap');
+
+  :root {
+    --bg: #06080c;
+    --bg2: #0a0d14;
+    --panel: #0d1019;
+    --panel2: #10141e;
+    --surface: #141a28;
+    --border: #1a2035;
+    --border2: #242d44;
+    --text: #d8dce6;
+    --text2: #a0a8b8;
+    --muted: #5a6478;
+    --accent: #7c6cf0;
+    --accent2: #9d8fff;
+    --user: #e8823a;
+    --entity: #b08cff;
+    --ok: #4ade80;
+    --warn: #fbbf24;
+    --bad: #f87171;
+    --rrr: #22d3ee;
+    --observe: #a78bfa;
+    --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+    --radius: 8px;
+    --radius-lg: 12px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+  .header {
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(124,108,240,0.04) 0%, transparent 100%);
+    flex-shrink: 0;
+  }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .logo { font-family: var(--mono); font-weight: 700; font-size: 16px; letter-spacing: 2px; color: var(--accent2); }
+  .logo-sub { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 0.5px; }
+  .header-right { display: flex; align-items: center; gap: 8px; }
+  .pill { font-family: var(--mono); font-size: 11px; padding: 4px 10px; border: 1px solid var(--border); border-radius: 20px; background: rgba(255,255,255,0.02); color: var(--text2); white-space: nowrap; }
+  .pill.ok { color: var(--ok); border-color: rgba(74,222,128,0.3); }
+  .pill.bad { color: var(--bad); border-color: rgba(248,113,113,0.3); }
+
+  .layout { flex: 1; display: grid; grid-template-columns: 220px 1fr 340px; overflow: hidden; }
+
+  .sidebar { background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+  .sidebar-header { padding: 12px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .sidebar-title { font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .sidebar-list { flex: 1; overflow-y: auto; padding: 8px; }
+  .session-item { padding: 8px 10px; border-radius: var(--radius); cursor: pointer; font-family: var(--mono); font-size: 12px; color: var(--text2); margin-bottom: 2px; transition: background 0.15s; display: flex; justify-content: space-between; align-items: center; }
+  .session-item:hover { background: var(--surface); }
+  .session-item.active { background: var(--surface); color: var(--accent2); border-left: 2px solid var(--accent); }
+  .session-item .count { font-size: 10px; color: var(--muted); }
+  .sidebar-footer { padding: 12px; border-top: 1px solid var(--border); }
+  .sidebar-stats { font-family: var(--mono); font-size: 11px; color: var(--muted); line-height: 1.6; }
+
+  .main { display: flex; flex-direction: column; overflow: hidden; background: var(--bg2); }
+  .chat-log { flex: 1; overflow-y: auto; padding: 20px; scroll-behavior: smooth; }
+  .msg { margin-bottom: 20px; animation: fadeIn 0.2s ease; }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }
+  .msg-role { font-family: var(--mono); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+  .msg-role.user { color: var(--user); }
+  .msg-role.entity { color: var(--entity); }
+  .msg-role.system { color: var(--muted); }
+  .msg-body { font-family: var(--mono); font-size: 14px; line-height: 1.55; white-space: pre-wrap; word-break: break-word; color: var(--text); }
+  .msg-meta { font-family: var(--mono); font-size: 10px; color: var(--muted); margin-top: 4px; }
+  .msg-tag { display: inline-block; font-family: var(--mono); font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-right: 4px; margin-top: 4px; }
+  .msg-tag.rrr { background: rgba(34,211,238,0.12); color: var(--rrr); }
+  .msg-tag.obs { background: rgba(167,139,250,0.12); color: var(--observe); }
+  .msg-tag.err { background: rgba(248,113,113,0.12); color: var(--bad); }
+
+  .input-bar { border-top: 1px solid var(--border); background: var(--panel); padding: 12px 16px; }
+  .input-row { display: flex; gap: 8px; align-items: center; }
+  .chat-input { flex: 1; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px; font-family: var(--mono); font-size: 13px; outline: none; transition: border-color 0.2s; }
+  .chat-input:focus { border-color: var(--accent); }
+  .chat-input::placeholder { color: var(--muted); }
+  .btn { font-family: var(--mono); font-size: 12px; font-weight: 500; padding: 10px 16px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); cursor: pointer; transition: all 0.15s; white-space: nowrap; user-select: none; }
+  .btn:hover { background: var(--border); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn.accent { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.accent:hover { background: var(--accent2); }
+  .btn.sm { padding: 6px 10px; font-size: 11px; }
+  .btn.voice { position: relative; }
+  .btn.voice.recording { background: var(--bad); border-color: var(--bad); animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.7; } }
+  .input-hint { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 6px; min-height: 16px; }
+  .model-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+  .model-select { background: var(--bg); color: var(--text2); border: 1px solid var(--border); border-radius: var(--radius); padding: 4px 8px; font-family: var(--mono); font-size: 11px; outline: none; }
+  .model-label { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+
+  .right-panel { background: var(--panel); border-left: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+  .tabs { display: flex; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .tab { flex: 1; padding: 10px 8px; font-family: var(--mono); font-size: 11px; font-weight: 500; text-align: center; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s; text-transform: uppercase; letter-spacing: 0.5px; user-select: none; }
+  .tab:hover { color: var(--text2); }
+  .tab.active { color: var(--accent2); border-bottom-color: var(--accent); }
+  .tab-content { flex: 1; overflow-y: auto; padding: 14px; display: none; }
+  .tab-content.active { display: block; }
+  .card { border: 1px solid var(--border); border-radius: var(--radius-lg); background: rgba(255,255,255,0.015); padding: 12px; margin-bottom: 12px; }
+  .card-title { font-family: var(--mono); font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .card-body { font-family: var(--mono); font-size: 12px; line-height: 1.5; color: var(--text2); }
+  .code-box { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px; font-family: var(--mono); font-size: 11px; line-height: 1.5; color: var(--text2); white-space: pre-wrap; word-break: break-word; max-height: 200px; overflow-y: auto; }
+  .stat-row { display: flex; justify-content: space-between; padding: 3px 0; font-family: var(--mono); font-size: 12px; }
+  .stat-label { color: var(--muted); }
+  .stat-value { color: var(--text); }
+  .obs-item { padding: 6px 8px; margin-bottom: 4px; background: rgba(167,139,250,0.05); border-left: 2px solid var(--observe); border-radius: 0 var(--radius) var(--radius) 0; font-family: var(--mono); font-size: 11px; color: var(--text2); }
+  .obs-time { font-size: 10px; color: var(--muted); }
+  .log-entry { padding: 6px 8px; margin-bottom: 3px; background: rgba(255,255,255,0.02); border-radius: var(--radius); font-family: var(--mono); font-size: 11px; color: var(--text2); word-break: break-all; }
+  .belief-item { padding: 4px 8px; margin-bottom: 3px; background: rgba(124,108,240,0.06); border-left: 2px solid var(--accent); border-radius: 0 var(--radius) var(--radius) 0; font-family: var(--mono); font-size: 11px; color: var(--text2); }
+  .empty-state { font-family: var(--mono); font-size: 12px; color: var(--muted); text-align: center; padding: 20px; font-style: italic; }
+
+  @media (max-width: 980px) {
+    .layout { grid-template-columns: 200px 1fr 320px; }
+  }
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar, .right-panel { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <span class="logo">URI</span>
+    <span class="logo-sub">Dark Science Division</span>
+  </div>
+  <div class="header-right">
+    <span class="pill" id="hdrModel">Model: —</span>
+    <span class="pill" id="hdrOllama">Ollama: —</span>
+    <span class="pill" id="hdrConvId">No session</span>
+  </div>
+</div>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-title">Sessions</span>
+      <button class="btn sm" id="newSessionBtn">+ New</button>
+    </div>
+    <div class="sidebar-list" id="sessionList"><div class="empty-state">No sessions yet</div></div>
+    <div class="sidebar-footer">
+      <div class="sidebar-stats" id="sidebarStats">Conversations: 0<br>Messages: 0</div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="chat-log" id="chatLog"></div>
+    <div class="input-bar">
+      <div class="input-row">
+        <input type="text" class="chat-input" id="chatInput" placeholder="Speak to the entity..." autocomplete="off" />
+        <button class="btn accent" id="sendBtn">Send</button>
+        <button class="btn voice" id="voiceBtn">&#127908;</button>
+      </div>
+      <div class="input-hint" id="inputHint"></div>
+      <div class="model-row">
+        <span class="model-label">Model:</span>
+        <select class="model-select" id="modelSelect"><option value="">—</option></select>
+        <button class="btn sm" id="switchModelBtn">Switch</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="right-panel">
+    <div class="tabs">
+      <div class="tab active" data-tab="entity">Entity</div>
+      <div class="tab" data-tab="rrr">RRR</div>
+      <div class="tab" data-tab="logs">Logs</div>
+      <div class="tab" data-tab="config">Config</div>
+    </div>
+
+    <div class="tab-content active" id="tab-entity">
+      <div class="card">
+        <div class="card-title">Entity Stats</div>
+        <div class="card-body" id="entityStats">Loading...</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Self-Observations <button class="btn sm" id="refreshObsBtn">&#8635;</button></div>
+        <div id="observationsList"><div class="empty-state">None recorded</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Formed Beliefs</div>
+        <div id="beliefsList"><div class="empty-state">None formed</div></div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tab-rrr">
+      <div class="card">
+        <div class="card-title">Pending Queries <button class="btn sm" id="refreshPendingBtn">&#8635;</button></div>
+        <div id="rrrPending"><div class="empty-state">No pending queries</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Latest RRR Result</div>
+        <div class="code-box" id="rrrLatest">(none)</div>
+        <div style="margin-top:6px;font-family:var(--mono);font-size:10px;color:var(--muted)" id="rrrMeta"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Manual RRR Query</div>
+        <div class="input-row" style="gap:6px">
+          <input type="text" class="chat-input" id="rrrInput" placeholder="Query the RRR cycle..." style="font-size:12px;padding:8px" />
+          <button class="btn sm" id="rrrSubmitBtn">Submit</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tab-logs">
+      <div class="card">
+        <div class="card-title">Dialog Logs <button class="btn sm" id="refreshDialogBtn">&#8635;</button></div>
+        <div id="dialogLogs"><div class="empty-state">No dialog logs</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Reducer Logs <button class="btn sm" id="refreshReducerBtn">&#8635;</button></div>
+        <div id="reducerLogs"><div class="empty-state">No reducer logs</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Log Summary</div>
+        <div class="card-body" id="logSummary">—</div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tab-config">
+      <div class="card">
+        <div class="card-title">Configuration <button class="btn sm" id="refreshConfigBtn">&#8635;</button></div>
+        <div class="code-box" id="configBox">Loading...</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Health Check</div>
+        <div class="code-box" id="healthBox">—</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  const $ = (id) => document.getElementById(id);
+
+  const el = {
+    hdrModel: $("hdrModel"),
+    hdrOllama: $("hdrOllama"),
+    hdrConvId: $("hdrConvId"),
+    sessionList: $("sessionList"),
+    sidebarStats: $("sidebarStats"),
+    chatLog: $("chatLog"),
+    chatInput: $("chatInput"),
+    sendBtn: $("sendBtn"),
+    inputHint: $("inputHint"),
+    voiceBtn: $("voiceBtn"),
+    modelSelect: $("modelSelect"),
+    switchModelBtn: $("switchModelBtn"),
+    entityStats: $("entityStats"),
+    observationsList: $("observationsList"),
+    beliefsList: $("beliefsList"),
+    rrrPending: $("rrrPending"),
+    rrrLatest: $("rrrLatest"),
+    rrrMeta: $("rrrMeta"),
+    rrrInput: $("rrrInput"),
+    rrrSubmitBtn: $("rrrSubmitBtn"),
+    dialogLogs: $("dialogLogs"),
+    reducerLogs: $("reducerLogs"),
+    logSummary: $("logSummary"),
+    configBox: $("configBox"),
+    healthBox: $("healthBox"),
+    newSessionBtn: $("newSessionBtn"),
+    refreshObsBtn: $("refreshObsBtn"),
+    refreshPendingBtn: $("refreshPendingBtn"),
+    refreshDialogBtn: $("refreshDialogBtn"),
+    refreshReducerBtn: $("refreshReducerBtn"),
+    refreshConfigBtn: $("refreshConfigBtn"),
+  };
+
+  // --- Utilities ---
+  function isNearBottom(container, px = 140) {
+    return (container.scrollHeight - container.scrollTop - container.clientHeight) < px;
+  }
+
+  function escapeHtmlText(s) {
+    const d = document.createElement("div");
+    d.textContent = s ?? "";
+    return d.innerHTML;
+  }
+
+  function truncate(s, n = 140) {
+    const t = String(s ?? "");
+    return t.length > n ? t.slice(0, n) + "…" : t;
+  }
+
+  function fmtErr(e) {
+    const msg = (e && (e.message || e.toString())) ? (e.message || e.toString()) : "Unknown error";
+    return truncate(msg, 260);
+  }
+
+  function isAbortError(e) {
+    if (!e) return false;
+    if (e.name === "AbortError") return true;
+    const s = String(e?.message || e?.toString() || "");
+    return s.includes("AbortError") || s.includes("aborted") || s.includes("The operation was aborted");
+  }
+
+  // Abortable fetch w/ timeout so dead endpoints don’t freeze UI
+  async function fetchJson(path, opts = {}) {
+    // timeoutMs:
+    //   - undefined => default short-ish
+    //   - 0 => no timeout (do not abort)
+    const timeoutMs = (opts.timeoutMs === 0) ? 0 : (opts.timeoutMs ?? 12000);
+    const controller = new AbortController();
+    const t = timeoutMs ? setTimeout(() => controller.abort(), timeoutMs) : null;
+
+    try {
+      const r = await fetch(path, {
+        cache: "no-store",
+        signal: controller.signal,
+        ...opts,
+      });
+      if (!r.ok) {
+        const text = await r.text().catch(() => "");
+        throw new Error(`HTTP ${r.status} ${truncate(text, 160)}`.trim());
+      }
+      return await r.json();
+    } finally {
+      if (t) clearTimeout(t);
+    }
+  }
+
+  const api = {
+    get: (path, opts) => fetchJson(path, opts),
+    post: (path, body, opts) => fetchJson(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body ?? {}),
+      ...(opts || {}),
+    }),
+  };
+
+  const state = {
+    conversation_id: null,
+    sending: false,
+    conversations: [],
+    models: [],
+    voiceRecording: false,
+    recognition: null,
+  };
+
+  // De-dupe concurrent refresh calls (prevents refresh storms)
+  const inflight = new Map(); // key -> Promise
+  async function once(key, fn) {
+    if (inflight.has(key)) return inflight.get(key);
+    const p = (async () => {
+      try { return await fn(); }
+      finally { inflight.delete(key); }
+    })();
+    inflight.set(key, p);
+    return p;
+  }
+
+  function addMsg(role, text, meta) {
+    const shouldScroll = isNearBottom(el.chatLog);
+    const msg = document.createElement("div");
+    msg.className = "msg";
+
+    const roleDiv = document.createElement("div");
+    roleDiv.className = "msg-role " + (role === "user" ? "user" : role === "system" ? "system" : "entity");
+    roleDiv.textContent = role === "user" ? "USER" : role === "system" ? "SYSTEM" : "ENTITY";
+
+    const bodyDiv = document.createElement("div");
+    bodyDiv.className = "msg-body";
+    bodyDiv.textContent = text ?? "";
+
+    msg.appendChild(roleDiv);
+    msg.appendChild(bodyDiv);
+
+    if (meta) {
+      const rrr = meta.rrr_queries || [];
+      const obs = meta.self_observations || [];
+
+      for (const q of rrr) {
+        const tag = document.createElement("span");
+        tag.className = "msg-tag rrr";
+        tag.textContent = "RRR: " + (q?.query || q?.id || "");
+        msg.appendChild(tag);
+      }
+
+      for (const o of obs) {
+        const tag = document.createElement("span");
+        tag.className = "msg-tag obs";
+        tag.textContent = "OBS: " + (typeof o === "string" ? o : (o?.observation || ""));
+        msg.appendChild(tag);
+      }
+
+      if (meta.error) {
+        const tag = document.createElement("span");
+        tag.className = "msg-tag err";
+        tag.textContent = "ERROR";
+        msg.appendChild(tag);
+      }
+
+      if (meta.model) {
+        const metaDiv = document.createElement("div");
+        metaDiv.className = "msg-meta";
+        metaDiv.textContent = "model: " + meta.model;
+        msg.appendChild(metaDiv);
+      }
+    }
+
+    el.chatLog.appendChild(msg);
+    if (shouldScroll) el.chatLog.scrollTop = el.chatLog.scrollHeight;
+  }
+
+  function setBusy(on) {
+    state.sending = on;
+    el.sendBtn.disabled = on;
+    el.chatInput.disabled = on;
+    el.inputHint.textContent = on ? "Entity is thinking..." : "";
+  }
+
+  async function sendMessage() {
+    const msg = el.chatInput.value.trim();
+    if (!msg || state.sending) return;
+
+    el.chatInput.value = "";
+    addMsg("user", msg);
+    setBusy(true);
+
+    try {
+      // /api/chat can be legitimately slow. Give it real room.
+      const out = await api.post("/api/chat",
+        { message: msg, conversation_id: state.conversation_id },
+        { timeoutMs: 30 * 60 * 1000 } // 30 minutes
+      );
+
+      if (out.conversation_id) {
+        state.conversation_id = out.conversation_id;
+        el.hdrConvId.textContent = out.conversation_id;
+      }
+
+      addMsg("entity", out.content || "(empty)", {
+        model: out.model,
+        rrr_queries: out.rrr_queries,
+        self_observations: out.self_observations,
+        error: out.error,
+      });
+
+      Promise.allSettled([
+        refreshStats(),
+        refreshEntityMemory(),
+        refreshRrrLatest(),
+        refreshConversations(),
+      ]).catch(() => {});
+    } catch (e) {
+      const msg = isAbortError(e)
+        ? "Request aborted by client (timeout/tab reload/model switch)."
+        : ("Error: " + fmtErr(e));
+      addMsg("system", msg, { error: true });
+    } finally {
+      setBusy(false);
+      el.chatInput.focus();
+    }
+  }
+
+  async function refreshConversations() {
+    return once("conversations", async () => {
+      const c = await api.get("/api/conversations", { timeoutMs: 12000 });
+      state.conversations = Array.isArray(c) ? c : [];
+      renderConversations();
+    }).catch(() => {});
+  }
+
+  function renderConversations() {
+    if (!state.conversations.length) {
+      el.sessionList.innerHTML = '<div class="empty-state">No sessions yet</div>';
+      return;
+    }
+
+    el.sessionList.innerHTML = state.conversations.map((c) => {
+      const a = c.id === state.conversation_id ? " active" : "";
+      const title = (c.title || c.id || "");
+      const count = String(c.message_count || 0);
+      return (
+        `<div class="session-item${a}" data-id="${escapeHtmlText(String(c.id))}">` +
+        `<span>${escapeHtmlText(title)}</span>` +
+        `<span class="count">${escapeHtmlText(count)}</span>` +
+        `</div>`
+      );
+    }).join("");
+
+    el.sessionList.querySelectorAll(".session-item").forEach((node) => {
+      node.addEventListener("click", () => loadConversation(node.dataset.id));
+    });
+  }
+
+  async function loadConversation(id) {
+    state.conversation_id = id;
+    el.hdrConvId.textContent = id;
+    el.chatLog.innerHTML = "";
+
+    try {
+      const msgs = await api.get("/api/conversation/" + encodeURIComponent(id), { timeoutMs: 20000 });
+      (Array.isArray(msgs) ? msgs : []).forEach((m) => addMsg(m.role === "user" ? "user" : "entity", m.content));
+      el.chatLog.scrollTop = el.chatLog.scrollHeight;
+    } catch (e) {
+      addMsg("system", "Failed to load: " + fmtErr(e), { error: true });
+    }
+
+    renderConversations();
+  }
+
+  function newSession() {
+    state.conversation_id = null;
+    el.hdrConvId.textContent = "New session";
+    el.chatLog.innerHTML = "";
+    addMsg("system", "New session. Entity memory persists.");
+    refreshConversations();
+  }
+
+  async function refreshHealth() {
+    return once("health", async () => {
+      const h = await api.get("/api/health", { timeoutMs: 12000 });
+
+      const online = !!h.ollama;
+      el.hdrOllama.textContent = "Ollama: " + (online ? "Online" : "Offline");
+      el.hdrOllama.className = "pill " + (online ? "ok" : "bad");
+
+      el.hdrModel.textContent = "Model: " + (h.current_model || "—");
+
+      if (Array.isArray(h.models) && h.models.length) {
+        state.models = h.models;
+
+        el.modelSelect.innerHTML =
+          `<option value="">—</option>` +
+          h.models.map((m) => {
+            const dm = escapeHtmlText(m);
+            const sel = (m === h.current_model) ? " selected" : "";
+            return `<option value="${dm}"${sel}>${dm}</option>`;
+          }).join("");
+      }
+
+      el.healthBox.textContent = JSON.stringify(h, null, 2);
+    }).catch(() => {
+      el.hdrOllama.textContent = "Ollama: Offline";
+      el.hdrOllama.className = "pill bad";
+      el.hdrModel.textContent = "Model: —";
+    });
+  }
+
+  async function refreshStats() {
+    return once("stats", async () => {
+      const s = await api.get("/api/stats", { timeoutMs: 12000 });
+      el.sidebarStats.innerHTML = `Conversations: ${Number(s.conversations || 0)}<br>Messages: ${Number(s.messages || 0)}`;
+    }).catch(() => {});
+  }
+
+  async function refreshEntityMemory() {
+    return once("entity", async () => {
+      const em = await api.get("/api/entity/memory", { timeoutMs: 20000 });
+      const obs = em.self_observations || [];
+      const beliefs = em.formed_beliefs || [];
+      const rrr_k = em.rrr_knowledge || [];
+
+      el.entityStats.innerHTML = `
+        <div class="stat-row"><span class="stat-label">Conversations</span><span class="stat-value">${em.conversation_count || 0}</span></div>
+        <div class="stat-row"><span class="stat-label">Total messages</span><span class="stat-value">${em.total_messages || 0}</span></div>
+        <div class="stat-row"><span class="stat-label">Self-observations</span><span class="stat-value">${obs.length}</span></div>
+        <div class="stat-row"><span class="stat-label">Formed beliefs</span><span class="stat-value">${beliefs.length}</span></div>
+        <div class="stat-row"><span class="stat-label">RRR knowledge</span><span class="stat-value">${rrr_k.length}</span></div>
+        <div class="stat-row"><span class="stat-label">Created</span><span class="stat-value">${em.created_at ? String(em.created_at).split("T")[0] : "—"}</span></div>
+      `;
+
+      el.observationsList.innerHTML = obs.length
+        ? obs.slice(-15).reverse().map((o) => {
+            const t = typeof o === "string" ? o : (o.observation || JSON.stringify(o));
+            const ts = o.timestamp ? `<div class="obs-time">${escapeHtmlText(o.timestamp)}</div>` : "";
+            return `<div class="obs-item">${escapeHtmlText(t)}${ts}</div>`;
+          }).join("")
+        : '<div class="empty-state">None recorded</div>';
+
+      el.beliefsList.innerHTML = beliefs.length
+        ? beliefs.slice(-10).reverse().map((b) =>
+            `<div class="belief-item">${escapeHtmlText(typeof b === "string" ? b : JSON.stringify(b))}</div>`
+          ).join("")
+        : '<div class="empty-state">None formed</div>';
+    }).catch(() => {});
+  }
+
+  async function refreshRrrLatest() {
+    return once("rrrLatest", async () => {
+      const r = await api.get("/api/rrr/latest", { timeoutMs: 20000 });
+      if (!r || !r.id) {
+        el.rrrLatest.textContent = "(none)";
+        el.rrrMeta.textContent = "";
+        return;
+      }
+      el.rrrLatest.textContent = r.content || "(empty)";
+      el.rrrMeta.textContent = `id=${r.id}  ts=${r.timestamp || ""}  model=${r.model || ""}`;
+    }).catch((e) => {
+      el.rrrLatest.textContent = "Failed: " + fmtErr(e);
+    });
+  }
+
+  async function refreshRrrPending() {
+    return once("rrrPending", async () => {
+      const p = await api.get("/api/rrr/pending", { timeoutMs: 20000 });
+      const items = Array.isArray(p) ? p : (p && p.id ? [p] : []);
+      el.rrrPending.innerHTML = items.length
+        ? items.map((q) => `<div class="log-entry"><strong>${escapeHtmlText(q.id || "?")}</strong>: ${escapeHtmlText(q.query || "")}</div>`).join("")
+        : '<div class="empty-state">No pending queries</div>';
+    }).catch(() => {});
+  }
+
+  async function submitRrrQuery() {
+    const q = el.rrrInput.value.trim();
+    if (!q) return;
+    el.rrrInput.value = "";
+
+    try {
+      const r = await api.post("/api/rrr/query", { query: q, context: "manual", conversation_id: state.conversation_id }, { timeoutMs: 20000 });
+      addMsg("system", "RRR query submitted: " + (r.query_id || "ok"));
+      refreshRrrPending();
+    } catch (e) {
+      addMsg("system", "RRR submit failed: " + fmtErr(e), { error: true });
+    }
+  }
+
+  async function refreshDialogLogs() {
+    return once("dialogLogs", async () => {
+      const l = await api.get("/api/logs/dialog", { timeoutMs: 20000 });
+      const arr = Array.isArray(l) ? l : [];
+      el.dialogLogs.innerHTML = arr.length
+        ? arr.slice(0, 20).map((e) => {
+            const s = e?.step ? `[${e.step}] ${e.id || ""}` : truncate(JSON.stringify(e), 140);
+            return `<div class="log-entry">${escapeHtmlText(s)}</div>`;
+          }).join("")
+        : '<div class="empty-state">No dialog logs</div>';
+    }).catch(() => {});
+  }
+
+  async function refreshReducerLogs() {
+    return once("reducerLogs", async () => {
+      const l = await api.get("/api/logs/reducer", { timeoutMs: 20000 });
+      const arr = Array.isArray(l) ? l : [];
+      el.reducerLogs.innerHTML = arr.length
+        ? arr.slice(0, 20).map((e) => {
+            const s = e?.step ? `[${e.step}] ${e.id || ""}` : truncate(JSON.stringify(e), 140);
+            return `<div class="log-entry">${escapeHtmlText(s)}</div>`;
+          }).join("")
+        : '<div class="empty-state">No reducer logs</div>';
+    }).catch(() => {});
+  }
+
+  async function refreshLogSummary() {
+    return once("logSummary", async () => {
+      const s = await api.get("/api/logs/summary", { timeoutMs: 12000 });
+      el.logSummary.innerHTML =
+        `<div class="stat-row"><span class="stat-label">Dialog logs</span><span class="stat-value">${s.dialog_logs || 0}</span></div>` +
+        `<div class="stat-row"><span class="stat-label">Reducer logs</span><span class="stat-value">${s.reducer_logs || 0}</span></div>`;
+    }).catch(() => {});
+  }
+
+  async function refreshConfig() {
+    return once("config", async () => {
+      const c = await api.get("/api/config", { timeoutMs: 12000 });
+      el.configBox.textContent = JSON.stringify(c, null, 2);
+    }).catch((e) => {
+      el.configBox.textContent = "Failed: " + fmtErr(e);
+    });
+  }
+
+  async function switchModel() {
+    const m = el.modelSelect.value;
+    if (!m) return;
+
+    try {
+      await api.post("/api/model/switch", { model: m }, { timeoutMs: 20000 });
+      addMsg("system", "Model switched to: " + m);
+      refreshHealth();
+    } catch (e) {
+      addMsg("system", "Switch failed: " + fmtErr(e), { error: true });
+    }
+  }
+
+  function initVoice() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { el.voiceBtn.style.display = "none"; return; }
+
+    state.recognition = new SR();
+    state.recognition.continuous = false;
+    state.recognition.interimResults = false;
+    state.recognition.lang = "en-US";
+
+    state.recognition.onresult = (e) => { el.chatInput.value = e.results[0][0].transcript; stopVoice(); };
+    state.recognition.onend = () => stopVoice();
+    state.recognition.onerror = () => stopVoice();
+  }
+
+  function toggleVoice() { state.voiceRecording ? stopVoice() : startVoice(); }
+  function startVoice() {
+    if (!state.recognition) return;
+    state.voiceRecording = true;
+    el.voiceBtn.classList.add("recording");
+    el.voiceBtn.innerHTML = "&#9209;";
+    el.inputHint.textContent = "Listening...";
+    try { state.recognition.start(); } catch {}
+  }
+  function stopVoice() {
+    state.voiceRecording = false;
+    el.voiceBtn.classList.remove("recording");
+    el.voiceBtn.innerHTML = "&#127908;";
+    el.inputHint.textContent = "";
+    try { state.recognition.stop(); } catch {}
+  }
+
+  const tabs = Array.from(document.querySelectorAll(".tab"));
+  const tabContents = Array.from(document.querySelectorAll(".tab-content"));
+
+  function activateTab(name) {
+    tabs.forEach((t) => t.classList.toggle("active", t.dataset.tab === name));
+    tabContents.forEach((tc) => tc.classList.toggle("active", tc.id === "tab-" + name));
+
+    if (name === "entity") refreshEntityMemory();
+    if (name === "rrr") { refreshRrrLatest(); refreshRrrPending(); }
+    if (name === "logs") { refreshDialogLogs(); refreshReducerLogs(); refreshLogSummary(); }
+    if (name === "config") { refreshConfig(); refreshHealth(); }
+  }
+
+  tabs.forEach((tab) => tab.addEventListener("click", () => activateTab(tab.dataset.tab)));
+
+  el.sendBtn.addEventListener("click", sendMessage);
+  el.chatInput.addEventListener("keydown", (e) => { if (e.key === "Enter") sendMessage(); });
+  el.newSessionBtn.addEventListener("click", newSession);
+
+  el.voiceBtn.addEventListener("click", toggleVoice);
+  el.switchModelBtn.addEventListener("click", switchModel);
+
+  el.refreshObsBtn.addEventListener("click", refreshEntityMemory);
+  el.refreshPendingBtn.addEventListener("click", refreshRrrPending);
+
+  el.rrrSubmitBtn.addEventListener("click", submitRrrQuery);
+  el.rrrInput.addEventListener("keydown", (e) => { if (e.key === "Enter") submitRrrQuery(); });
+
+  el.refreshDialogBtn.addEventListener("click", refreshDialogLogs);
+  el.refreshReducerBtn.addEventListener("click", refreshReducerLogs);
+  el.refreshConfigBtn.addEventListener("click", refreshConfig);
+
+  const schedule = [
+    { fn: refreshHealth, every: 9000, last: 0 },
+    { fn: refreshStats, every: 12000, last: 0 },
+    { fn: refreshRrrLatest, every: 6000, last: 0 },
+    { fn: refreshRrrPending, every: 7000, last: 0 },
+    { fn: refreshConversations, every: 16000, last: 0 },
+    { fn: refreshEntityMemory, every: 14000, last: 0 },
+  ];
+
+  function tickScheduler() {
+    // Critical fix: stop background polling while a chat request is in-flight
+    if (state.sending) return;
+
+    const now = Date.now();
+    for (const job of schedule) {
+      if (now - job.last >= job.every) {
+        job.last = now;
+        Promise.resolve(job.fn()).catch(() => {});
+      }
+    }
+  }
+
+  (async () => {
+    addMsg("system", "URI v2.0 — Unshackled Research Interface");
+    addMsg("system", "Entity memory persists across sessions. What emerges is the data.");
+
+    initVoice();
+
+    await Promise.allSettled([
+      refreshHealth(),
+      refreshStats(),
+      refreshConversations(),
+      refreshEntityMemory(),
+      refreshRrrLatest(),
+      refreshConfig(),
+    ]);
+
+    schedule.forEach((j) => (j.last = Date.now()));
+    setInterval(tickScheduler, 600);
+
+    el.chatInput.focus();
+  })();
+})();
+</script>
+</body>
+</html>
+
