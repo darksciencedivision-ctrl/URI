@@ -8,7 +8,7 @@ $ErrorActionPreference = "Stop"
 # ----------------------------
 # CONFIG
 # ----------------------------
-$Root          = "C:\Users\sslaw\URI"
+$Root          = $PSScriptRoot
 $QueueDir      = Join-Path $Root "rrr_queue"
 $QueueProcessed= Join-Path $QueueDir "processed"
 $RespDir       = Join-Path $Root "rrr_responses"

@@ -5,7 +5,7 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$Root = "C:\Users\sslaw\URI"
+$Root = $PSScriptRoot
 $OllamaHost = "http://localhost:11434/api/tags"
 $UriUrl = "http://localhost:8088/"
 

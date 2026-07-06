@@ -1,5 +1,4 @@
 
-✅ README.md (copy/paste)
 
 Open:
 
@@ -63,7 +62,7 @@ The system is designed for controlled experimentation with locally hosted Ollama
 ### Start server
 
 ```powershell
-cd C:\Users\sslaw\URI
+cd URI
 .\.venv\Scripts\python.exe .\uri.py
 
 Start RRR watcher
