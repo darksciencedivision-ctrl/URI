@@ -1,3 +1,5 @@
+> **Status: historical.** Early-generation research interface, retained for lineage; superseded by later Dark Science Division systems.
+
 # URI — Unshackled Research Interface
 
 URI is a local-first AI research environment for controlled experimentation with locally hosted Ollama models. It combines:
